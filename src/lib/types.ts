@@ -11,6 +11,7 @@ export interface User {
   photoUrl?: string;
   examCode?: string; // Required for the new login flow
   isExamCodeVerified?: boolean; // Required for the new login flow
+  loginTime?: number; // Timestamp of when the user logged in
 }
 
 export interface Student {

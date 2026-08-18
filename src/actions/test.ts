@@ -34,11 +34,11 @@ export async function submitTest(answers: Answer[], user: User, paperId: string,
       } else {
         incorrectAnswers++;
         incorrectAnswerDetails.push({
-          question_en: question.question_en,
-          question_hi: question.question_hi,
-          correct_option: question.options[question.correct_option].en,
+          question_en: question.question_en || "Unknown Question",
+          question_hi: question.question_hi || "Unknown Question",
+          correct_option: question.options[question.correct_option]?.en || "Unknown",
           userSelectedAnswer: question.options[answer.selectedOption]?.en || "Not Answered",
-          topic: question.topic,
+          topic: question.topic || "Unknown",
         });
       }
     }
@@ -48,12 +48,18 @@ export async function submitTest(answers: Answer[], user: User, paperId: string,
   const notAttemptedQuestions = totalQuestions - attemptedQuestions;
   const percentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
+  // Clean up answers to remove undefined values
+  const cleanedAnswers = answers.map(a => ({
+    questionId: a.questionId,
+    selectedOption: a.selectedOption || ""
+  }));
+
   const submissionData = {
     userId: user.id,
     studentName: user.name,
     paperId: paperId,
     date: Date.now(),
-    answers,
+    answers: cleanedAnswers,
     score,
     totalQuestions,
     attemptedQuestions,
@@ -268,10 +274,15 @@ export async function startExam(userId: string, studentName: string, paperId: st
 // Sync answers for an ongoing exam
 export async function syncAnswers(submissionId: string, answers: Answer[]): Promise<{ success: boolean; error?: string }> {
   try {
+    const cleanedAnswers = answers.map(a => ({
+      questionId: a.questionId,
+      selectedOption: a.selectedOption || ""
+    }));
+
     const submissionRef = doc(appDb, "submissions", submissionId);
     await updateDoc(submissionRef, {
-      answers,
-      attemptedQuestions: answers.length
+      answers: cleanedAnswers,
+      attemptedQuestions: cleanedAnswers.filter(a => a.selectedOption !== "").length
     });
     return { success: true };
   } catch (error: any) {
@@ -303,11 +314,11 @@ export async function finishExam(submissionId: string, answers: Answer[], paperI
       } else {
         incorrectAnswers++;
         incorrectAnswerDetails.push({
-          question_en: question.question_en,
-          question_hi: question.question_hi,
-          correct_option: question.options[question.correct_option].en,
+          question_en: question.question_en || "Unknown Question",
+          question_hi: question.question_hi || "Unknown Question",
+          correct_option: question.options[question.correct_option]?.en || "Unknown",
           userSelectedAnswer: question.options[answer.selectedOption]?.en || "Not Answered",
-          topic: question.topic,
+          topic: question.topic || "Unknown",
         });
       }
     }
@@ -317,9 +328,15 @@ export async function finishExam(submissionId: string, answers: Answer[], paperI
   const notAttemptedQuestions = totalQuestions - attemptedQuestions;
   const percentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
+  // Clean answers
+  const cleanedAnswers = answers.map(a => ({
+    questionId: a.questionId,
+    selectedOption: a.selectedOption || ""
+  }));
+
   const updateData: any = {
     date: Date.now(),
-    answers,
+    answers: cleanedAnswers,
     score,
     totalQuestions,
     attemptedQuestions,

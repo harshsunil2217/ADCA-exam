@@ -36,7 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const storedUser = sessionStorage.getItem('user');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
+          
+          // Enforce 1-hour session limit
+          if (parsedUser.loginTime && Date.now() - parsedUser.loginTime > 3600000) {
+            sessionStorage.removeItem('user');
+            setUser(null);
+          } else {
+            setUser(parsedUser);
+          }
         }
       } catch (error) {
         console.error("Failed to parse user from session storage", error);
@@ -45,6 +52,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     };
     checkUser();
+
+    // Periodically check session expiration every minute
+    const intervalId = setInterval(() => {
+      checkUser();
+    }, 60000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -106,17 +120,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (adminDetails) {
         // Authenticated as Admin
         if (cleanPassword === 'sunil8896' || cleanPassword === adminDetails.uid) {
-           const adminUser: User = {
-             id: adminDetails.uid,
-             userId: adminDetails.mobile,
-             docId: adminDetails.uid,
-             name: adminDetails.name,
-             role: 'admin',
-             assignedPaper: '' // Admin doesn't have one
-           };
-           sessionStorage.setItem('user', JSON.stringify(adminUser));
-           setUser(adminUser);
-           return { user: adminUser };
+             const adminUser: User = {
+               id: adminDetails.uid,
+               userId: adminDetails.mobile,
+               docId: adminDetails.uid,
+               name: adminDetails.name,
+               role: 'admin',
+               assignedPaper: '', // Admin doesn't have one
+               loginTime: Date.now()
+             };
+             sessionStorage.setItem('user', JSON.stringify(adminUser));
+             setUser(adminUser);
+             return { user: adminUser };
         } else {
            return { user: null, error: 'password' };
         }
@@ -148,7 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       assignedPaper: assignedExam.examName,
       photoUrl: studentDetails?.photoUrl,
       examCode: assignedExam.examCode,
-      isExamCodeVerified: false
+      isExamCodeVerified: false,
+      loginTime: Date.now()
     };
 
     sessionStorage.setItem('user', JSON.stringify(loggedInUser));

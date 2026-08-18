@@ -90,8 +90,8 @@ export default function TestPage() {
         } catch (error) {
             console.error("Failed to load questions:", error);
             if (isMounted) {
-                toast({ variant: "destructive", title: "Error", description: "Failed to start exam due to a network error." });
-                router.push('/test/terminated');
+                toast({ variant: "destructive", title: "Error", description: "Failed to start exam due to a network error. Please try refreshing." });
+                setLoadingQuestions(false);
             }
         }
     }
@@ -123,13 +123,18 @@ export default function TestPage() {
   useEffect(() => {
     if (!submissionId || isSubmitting) return;
 
-    const handleElectronCheat = () => terminateExam("cheating (minimized/unfocused window)");
+    let gracePeriodActive = true;
+    const graceTimer = setTimeout(() => { gracePeriodActive = false; }, 5000);
 
-    // Listen for custom events triggered by the Electron main process
+    const handleElectronCheat = () => {
+        if (!gracePeriodActive) terminateExam("cheating (minimized/unfocused window)");
+    };
+
     window.addEventListener("electron-minimize", handleElectronCheat);
     window.addEventListener("electron-blur", handleElectronCheat);
 
     return () => {
+      clearTimeout(graceTimer);
       window.removeEventListener("electron-minimize", handleElectronCheat);
       window.removeEventListener("electron-blur", handleElectronCheat);
     };
@@ -200,8 +205,11 @@ export default function TestPage() {
   useEffect(() => {
       if (!user) return;
 
+      let gracePeriodActive = true;
+      const graceTimer = setTimeout(() => { gracePeriodActive = false; }, 5000);
+
       const handleVisibilityChange = () => {
-          if (document.visibilityState === 'hidden') {
+          if (document.visibilityState === 'hidden' && !gracePeriodActive) {
               terminateExam("cheating (switched tabs / lost focus)");
           }
       };
@@ -209,6 +217,7 @@ export default function TestPage() {
       document.addEventListener("visibilitychange", handleVisibilityChange);
 
       return () => {
+          clearTimeout(graceTimer);
           document.removeEventListener("visibilitychange", handleVisibilityChange);
       };
   }, [user, terminateExam]);
