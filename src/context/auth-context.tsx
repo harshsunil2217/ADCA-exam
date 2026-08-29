@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Student password check (universal password)
-    if (cleanPassword.toUpperCase() !== 'CSA2526') {
+    if (cleanPassword.toUpperCase() !== 'CSA2026') {
       return { user: null, error: 'password' };
     }
 
